@@ -1,0 +1,7 @@
+name = "karamah-projects"
+compatibility_date = "2026-08-04"
+pages_build_output_dir = "dist"
+
+# Production should bind the Admin API through the configured
+# VITE_ADMIN_ORIGIN and keep PROJECTS_DB attached to the Maps/Admin Pages
+# Function. Projects has no direct database or MCP credentials in the browser.

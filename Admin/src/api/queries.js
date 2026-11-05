@@ -1,0 +1,137 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiGet, apiPost } from "./client.js";
+
+// ── Read queries ─────────────────────────────────────────────────────────
+
+export const useAdminStats = () => useQuery({ queryKey: ["admin-stats"], queryFn: () => apiGet("admin-stats") });
+export const useGmailStatus = (options = {}) => useQuery({ queryKey: ["gmail-status"], queryFn: () => apiGet("gmail-status"), staleTime: 30_000, ...options });
+export const useContactGmailStatus = (options = {}) => useQuery({ queryKey: ["contact-gmail-status"], queryFn: () => apiGet("contact-gmail-status"), staleTime: 30_000, ...options });
+export const usePersonalGmailStatus = (options = {}) => useQuery({ queryKey: ["personal-gmail-status"], queryFn: () => apiGet("personal-gmail-status"), staleTime: 30_000, ...options });
+export const usePendingNew = () => useQuery({ queryKey: ["pending-new"], queryFn: () => apiGet("pending-new") });
+export const usePendingEdits = () => useQuery({ queryKey: ["pending-edits"], queryFn: () => apiGet("pending-edits") });
+export const useAdminPlaces = () => useQuery({ queryKey: ["admin-places"], queryFn: () => apiGet("admin-places") });
+export const useAdminContacts = () => useQuery({ queryKey: ["admin-contact"], queryFn: () => apiGet("admin-contact") });
+export const useInbox = (folder = "all", mailboxOrOptions = "", maybeOptions = {}) => {
+  const mailbox = typeof mailboxOrOptions === "string" ? mailboxOrOptions : "";
+  const options = typeof mailboxOrOptions === "string" ? maybeOptions : mailboxOrOptions;
+  return useQuery({
+  queryKey: ["inbox", folder, mailbox],
+  queryFn: () => apiGet("inbox-list", { folder, mailbox }),
+  staleTime: Infinity,
+  refetchInterval: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  ...options,
+  });
+};
+export const useInboxThread = (threadId) => useQuery({ queryKey: ["inbox", threadId], queryFn: () => apiGet("inbox-thread", { threadId }), enabled: !!threadId, placeholderData: previous => previous });
+export const useInboxMembers = () => useQuery({ queryKey: ["inbox-members"], queryFn: () => apiGet("inbox-members"), staleTime: 5 * 60 * 1000 });
+export const useInboxTyping = (threadId) => useQuery({ queryKey: ["inbox-typing", threadId], queryFn: () => apiGet("inbox-typing", { threadId }), enabled: !!threadId, staleTime: 0, refetchInterval: 1_200, refetchIntervalInBackground: true, refetchOnWindowFocus: true, retry: 0 });
+export const useAdminWishes = () => useQuery({ queryKey: ["admin-wishes"], queryFn: () => apiGet("admin-wishes") });
+export const useAdminEvents = () => useQuery({ queryKey: ["admin-events"], queryFn: () => apiGet("admin-events") });
+export const usePendingEventEdits = () => useQuery({ queryKey: ["pending-event-edits"], queryFn: () => apiGet("pending-event-edits") });
+export const useAdminReviews = () => useQuery({ queryKey: ["admin-reviews"], queryFn: () => apiGet("admin-reviews") });
+export const usePendingEid = () => useQuery({ queryKey: ["pending-eid"], queryFn: () => apiGet("pending-eid") });
+export const useAdminEidPrayers = () => useQuery({ queryKey: ["admin-eid-prayers"], queryFn: () => apiGet("admin-eid-prayers") });
+export const useAdminLog = () => useQuery({ queryKey: ["admin-log"], queryFn: () => apiGet("admin-log", { limit: 200 }) });
+export const useAdminSocialVideos = () =>
+  useQuery({ queryKey: ["admin-social-videos"], queryFn: () => apiGet("admin-social-videos") });
+export const useAdminTypeStyles = () => useQuery({ queryKey: ["admin-type-styles"], queryFn: () => apiGet("admin-type-styles") });
+export const useAdminAppSettings = () => useQuery({ queryKey: ["admin-app-settings"], queryFn: () => apiGet("admin-app-settings") });
+export const useWeeklyReportSubscribers = () => useQuery({ queryKey: ["weekly-report-subscribers"], queryFn: () => apiGet("weekly-report-subscribers") });
+export const useMapAnalytics = (days) => useQuery({ queryKey: ["map-analytics", days], queryFn: () => apiGet("analytics-dashboard", { days }), staleTime: 5 * 60 * 1000 });
+export const useSystemHealth = () => useQuery({ queryKey: ["system-health", "24h"], queryFn: () => apiGet("system-health", { days: 1 }), staleTime: 2 * 60 * 1000, retry: 0 });
+export const useOperationsSummary = (options = {}) => useQuery({ queryKey: ["operations-summary"], queryFn: () => apiGet("operations-summary"), staleTime: 20_000, ...options });
+export const useOperationsTasks = (filters = {}, options = {}) => useQuery({ queryKey: ["operations-tasks", filters], queryFn: () => apiGet("operations-tasks-list", filters), staleTime: 15_000, ...options });
+export const useOperationsTask = (id, options = {}) => useQuery({ queryKey: ["operations-task", id], queryFn: () => apiGet("operations-task-get", { id }), enabled: !!id, ...options });
+export const useOperationsApprovals = (options = {}) => useQuery({ queryKey: ["operations-approvals"], queryFn: () => apiGet("operations-approvals-list"), staleTime: 15_000, ...options });
+export const useOperationsHistory = (params, options = {}) => useQuery({ queryKey: ["operations-history", params], queryFn: () => apiGet("operations-history-list", params), enabled: !!params?.recordId, ...options });
+export const useProjects = (options = {}) => useQuery({ queryKey: ["projects"], queryFn: () => apiGet("project-list"), staleTime: 20_000, ...options });
+export const useProject = (projectId, options = {}) => useQuery({ queryKey: ["project", projectId], queryFn: () => apiGet("project-get", { projectId }), enabled: !!projectId, ...options });
+export const useProjectTasks = (filters = {}, options = {}) => useQuery({ queryKey: ["project-tasks", filters], queryFn: () => apiGet("project-tasks-list", filters), enabled: !!filters.projectId, staleTime: 10_000, ...options });
+export const useProjectTask = (id, options = {}) => useQuery({ queryKey: ["project-task", id], queryFn: () => apiGet("project-task-get", { id }), enabled: !!id, ...options });
+
+// ── Mutations — every one invalidates the queries it can affect, so a
+// pending row disappearing / stats changing shows up immediately without
+// a manual refresh. ──────────────────────────────────────────────────────
+
+function useAdminMutation(action, invalidateKeys) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body) => apiPost(action, body),
+    onSuccess: () => {
+      for (const key of invalidateKeys) queryClient.invalidateQueries({ queryKey: [key] });
+      queryClient.invalidateQueries({ queryKey: ["admin-log"] });
+    },
+  });
+}
+
+export const useApproveNew = () => useAdminMutation("approve-new", ["pending-new", "admin-places", "admin-stats"]);
+export const useRejectNew = () => useAdminMutation("reject-new", ["pending-new", "admin-stats"]);
+export const useApproveEdit = () => useAdminMutation("approve-edit", ["pending-edits", "admin-places", "admin-stats"]);
+export const useRejectEdit = () => useAdminMutation("reject-edit", ["pending-edits", "admin-stats"]);
+export const useUpdateBoycott = () => useAdminMutation("update-boycott", ["admin-places"]);
+export const useUpdatePlaceDisabled = () => useAdminMutation("update-place-disabled", ["admin-places", "admin-stats"]);
+export const useUpdatePlaceCoordinates = () => useAdminMutation("update-place-coordinates", ["admin-places"]);
+export const useRefreshPlaceInfo = () => useAdminMutation("refresh-place-info", ["admin-places", "admin-reviews"]);
+export const useDeletePlace = () => useAdminMutation("delete-place", ["admin-places", "admin-stats", "admin-events", "admin-reviews"]);
+export const useUpdateSponsor = () => useAdminMutation("update-sponsor", ["admin-places"]);
+export const useUpdateContactReplied = () => useAdminMutation("update-contact-replied", ["admin-contact", "admin-stats"]);
+export const useStartGmailOAuth = () => useAdminMutation("gmail-oauth-start", ["gmail-status"]);
+export const useStartContactGmailOAuth = () => useAdminMutation("gmail-oauth-start", ["contact-gmail-status", "inbox"]);
+export const useStartPersonalGmailOAuth = () => useAdminMutation("personal-gmail-oauth-start", ["personal-gmail-status", "inbox"]);
+export const useSyncGmail = () => useAdminMutation("gmail-sync", ["gmail-status", "inbox"]);
+export const useSyncContactGmail = () => useAdminMutation("gmail-sync", ["contact-gmail-status", "inbox"]);
+export const useSyncPersonalGmail = () => useAdminMutation("personal-gmail-sync", ["personal-gmail-status", "inbox"]);
+export const useDisconnectGmail = () => useAdminMutation("gmail-disconnect", ["gmail-status", "inbox"]);
+export const useDisconnectContactGmail = () => useAdminMutation("gmail-disconnect", ["contact-gmail-status", "inbox"]);
+export const useDisconnectPersonalGmail = () => useAdminMutation("personal-gmail-disconnect", ["personal-gmail-status", "inbox"]);
+export const useSendInboxReply = () => useAdminMutation("inbox-reply", ["inbox"]);
+export const useComposeInbox = () => useAdminMutation("inbox-compose", ["inbox"]);
+export const useSetInboxStatus = () => useAdminMutation("inbox-status", ["inbox"]);
+export const useAddInboxNote = () => useAdminMutation("inbox-note", ["inbox"]);
+export const useSetInboxStar = () => useAdminMutation("inbox-star", ["inbox"]);
+export const useSnoozeInbox = () => useAdminMutation("inbox-snooze", ["inbox"]);
+export const useAssignInbox = () => useAdminMutation("inbox-assign", ["inbox"]);
+export const useBulkInbox = () => useAdminMutation("inbox-bulk", ["inbox"]);
+export const useSetInboxTyping = () => useMutation({ mutationFn: body => apiPost("inbox-typing", body) });
+export const useUpdateWishApproved = () => useAdminMutation("update-wish-approved", ["admin-wishes", "admin-stats"]);
+export const useUpdateWishImplemented = () => useAdminMutation("update-wish-implemented", ["admin-wishes"]);
+export const useApproveEvent = () => useAdminMutation("approve-event", ["admin-events", "admin-stats"]);
+export const useRejectEvent = () => useAdminMutation("reject-event", ["admin-events", "admin-stats"]);
+export const useDeleteEvent = () => useAdminMutation("delete-event", ["admin-events", "pending-event-edits", "admin-stats"]);
+export const useApproveEventEdit = () => useAdminMutation("approve-event-edit", ["pending-event-edits", "admin-events", "admin-stats"]);
+export const useRejectEventEdit = () => useAdminMutation("reject-event-edit", ["pending-event-edits", "admin-stats"]);
+export const useApproveReview = () => useAdminMutation("approve-review", ["admin-reviews"]);
+export const useRejectReview = () => useAdminMutation("reject-review", ["admin-reviews"]);
+export const useSetReviewStatus = () => useAdminMutation("set-review-status", ["admin-reviews"]);
+export const useSetReviewImageStatus = () => useAdminMutation("set-review-image-status", ["admin-reviews"]);
+export const useDeleteReview = () => useAdminMutation("delete-review", ["admin-reviews", "admin-stats"]);
+export const useBanReviewer = () => useAdminMutation("ban-reviewer", ["admin-reviews"]);
+export const useUnbanReviewer = () => useAdminMutation("unban-reviewer", ["admin-reviews"]);
+export const useApproveEid = () => useAdminMutation("approve-eid", ["pending-eid", "admin-eid-prayers", "admin-stats"]);
+export const useRejectEid = () => useAdminMutation("reject-eid", ["pending-eid", "admin-stats"]);
+export const useUpsertSocialVideo = () => useAdminMutation("upsert-social-video", ["admin-social-videos"]);
+export const useDeleteSocialVideo = () => useAdminMutation("delete-social-video", ["admin-social-videos"]);
+export const useUpdateTypeStyle = () => useAdminMutation("update-type-style", ["admin-type-styles"]);
+export const useUpdateAppSettings = () => useAdminMutation("update-app-settings", ["admin-app-settings"]);
+export const useSaveWeeklyReportSubscriber = () => useAdminMutation("save-weekly-report-subscriber", ["weekly-report-subscribers"]);
+export const useSaveWeeklyReportSettings = () => useAdminMutation("save-weekly-report-settings", ["weekly-report-subscribers"]);
+export const useUnsubscribeWeeklyReportSubscriber = () => useAdminMutation("unsubscribe-weekly-report-subscriber", ["weekly-report-subscribers"]);
+export const useDeleteWeeklyReportSubscriber = () => useAdminMutation("delete-weekly-report-subscriber", ["weekly-report-subscribers"]);
+export const useCreateOperationsTask = () => useAdminMutation("operations-task-create", ["operations-tasks", "operations-summary"]);
+export const useUpdateOperationsTask = () => useAdminMutation("operations-task-update", ["operations-tasks", "operations-task", "operations-summary"]);
+export const useAssignOperationsTask = () => useAdminMutation("operations-task-assign", ["operations-tasks", "operations-task", "operations-summary"]);
+export const useBulkUpdateOperationsTasks = () => useAdminMutation("operations-tasks-bulk", ["operations-tasks", "operations-summary"]);
+export const useResolveOperationsApproval = () => useAdminMutation("operations-approval-resolve", ["operations-approvals", "operations-tasks", "operations-summary"]);
+export const useRollbackOperationsRevision = () => useAdminMutation("operations-history-rollback", ["operations-history", "operations-tasks", "operations-summary"]);
+export const useCreateProject = () => useAdminMutation("project-create", ["projects"]);
+export const useUpdateProject = () => useAdminMutation("project-update", ["projects", "project"]);
+export const useCreateProjectTask = () => useAdminMutation("project-tasks-create", ["project-tasks", "project", "projects"]);
+export const useUpdateProjectTask = () => useAdminMutation("project-task-update", ["project-task", "project-tasks", "project"]);
+export const useDeleteProjectTask = () => useAdminMutation("project-task-delete", ["project-task", "project-tasks", "project"]);
+export const useBulkUpdateProjectTasks = () => useAdminMutation("project-tasks-bulk", ["project-tasks", "project"]);
+export const useAddProjectTaskComment = () => useAdminMutation("project-task-comment", ["project-task"]);
+export const useGoogleTasksStatus = (options = {}) => useQuery({ queryKey: ["google-tasks-status"], queryFn: () => apiGet("google-tasks-status"), staleTime: 30_000, ...options });
+export const useStartGoogleTasksOAuth = () => useMutation({ mutationFn: body => apiPost("google-tasks-oauth-start", body) });
+export const useSyncGoogleTasks = () => useAdminMutation("google-tasks-sync", ["google-tasks-status", "project-tasks"]);

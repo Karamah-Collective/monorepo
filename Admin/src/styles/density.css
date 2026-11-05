@@ -1,0 +1,271 @@
+/*
+ * Non-overview admin surfaces use one clear heading per surface.
+ * Overview keeps its richer narrative hierarchy by design.
+ */
+.analytics-kicker,
+.access-kicker {
+  display: none;
+}
+
+.workspace-topbar {
+  min-height: 60px;
+  height: 60px;
+  padding-block: 0;
+  gap: 16px;
+}
+
+.breadcrumbs {
+  min-width: 0;
+  gap: 10px;
+}
+
+.breadcrumbs > span {
+  font-size: 12px;
+}
+
+.breadcrumbs strong {
+  overflow: hidden;
+  max-width: min(32vw, 360px);
+  color: var(--text);
+  align-self: center;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 0;
+  min-width: 0;
+}
+
+.topbar-page-actions:empty {
+  display: none;
+}
+
+.topbar-page-actions .website-header-actions,
+.topbar-page-actions .hub-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-page-actions .pp-btn {
+  min-height: 38px;
+  padding-inline: 13px;
+  font-size: 12px;
+}
+
+.topbar-page-actions .pp-type-style-tabs {
+  margin: 0;
+}
+
+.workspace-search {
+  margin-left: 0;
+}
+
+.pp-page > .pp-page-title,
+.access-heading .pp-page-title,
+.profile-heading .pp-page-title {
+  display: none;
+}
+
+.access-heading,
+.weekly-report-heading {
+  display: none;
+}
+
+.analytics-heading h1,
+.analytics-section-heading h2,
+.analytics-panel-header h2,
+.analytics-top-places h2,
+.system-health-heading h2,
+.health-last-day-heading h3,
+.health-service-header h3,
+.health-incidents h3,
+.access-section-title h2,
+.access-builder-heading .pp-panel-title,
+.weekly-report-panel-heading .pp-panel-title,
+.website-content-section-heading h2 {
+  margin-top: 0;
+}
+
+.analytics-insight p,
+.analytics-section-heading p,
+.analytics-panel-header p,
+.analytics-top-places-empty > p,
+.system-health-heading p,
+.access-section-title p,
+.access-request > div > p,
+.access-panel-copy,
+.weekly-report-panel-heading p,
+.website-content-section-heading p,
+.hub-library-head p,
+.hub-side-preview header p,
+.hub-form-section header p,
+.hub-library-head .eyebrow,
+.hub-side-preview header .eyebrow,
+.hub-form-section header .eyebrow,
+.admin-preference-row p,
+.profile-section > header > p,
+.profile-section > header > .eyebrow,
+.website-content-section-heading > .eyebrow,
+.form-invite-heading > div > p:not(.page-eyebrow),
+.version-history > p:not(.page-eyebrow),
+:is(.logic-workspace, .responses-workspace) > header p {
+  display: none;
+}
+
+.access-foundation-grid article small,
+.access-role > small {
+  display: none;
+}
+
+.pp-manage-action small {
+  display: none;
+}
+
+.profile-heading > div > .eyebrow,
+.access-heading .eyebrow,
+.weekly-report-heading > div > .eyebrow,
+.qr-page-head .eyebrow,
+.hub-page-head .eyebrow {
+  display: none;
+}
+
+.website-content-section-heading {
+  padding-bottom: 14px;
+}
+
+.profile-section > header {
+  padding-top: 16px;
+  padding-bottom: 14px;
+}
+
+.analytics-section-heading,
+.system-health-heading,
+.weekly-report-panel-heading {
+  margin-bottom: 14px;
+}
+
+.analytics-top-places-empty {
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  .workspace-topbar {
+    min-height: 58px;
+    height: 58px;
+    padding: 0 16px;
+    gap: 8px;
+  }
+
+  .breadcrumbs {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 0;
+  }
+
+  .breadcrumbs strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-page-actions {
+    order: 0;
+    flex: 0 1 auto;
+    margin-left: 0;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .topbar-actions {
+    margin-left: auto;
+    gap: 4px;
+  }
+
+  .topbar-page-actions .website-header-actions,
+  .topbar-page-actions .hub-page-actions {
+    gap: 4px;
+  }
+
+  .topbar-page-actions .pp-btn {
+    min-height: 36px;
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+
+  .topbar-page-actions .pp-btn svg {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  .topbar-page-actions .pp-btn:not(:has(svg)) {
+    width: auto;
+    min-width: 0;
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+
+  .topbar-page-actions .pp-type-style-tabs {
+    max-width: 42vw;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .topbar-page-actions .pp-type-style-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topbar-page-actions .pp-type-style-tabs button {
+    width: auto;
+    min-width: 0;
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+
+  .workspace-search {
+    order: 1;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    margin-left: auto;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .topbar-theme,
+  .topbar-map,
+  .mobile-menu {
+    width: 36px;
+    height: 36px;
+  }
+
+  .topbar-theme {
+    order: 2;
+  }
+
+  .topbar-map {
+    order: 3;
+  }
+}
+
+@media (min-width: 768px) {
+  .nav-is-collapsed .pp-nav-user {
+    padding-inline: 0;
+  }
+}

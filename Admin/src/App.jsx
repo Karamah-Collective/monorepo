@@ -1,0 +1,93 @@
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import AuthGuard from "./auth/AuthGuard.jsx";
+import AppLayout from "./layout/AppLayout.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import SignupPage from "./pages/SignupPage.jsx";
+import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import PlacesPage from "./pages/PlacesPage.jsx";
+import PendingNewPage from "./pages/PendingNewPage.jsx";
+import PendingEditsPage from "./pages/PendingEditsPage.jsx";
+import EventsPage from "./pages/EventsPage.jsx";
+import EventEditsPage from "./pages/EventEditsPage.jsx";
+import EidPage from "./pages/EidPage.jsx";
+import ReviewsPage from "./pages/ReviewsPage.jsx";
+import WishesPage from "./pages/WishesPage.jsx";
+import ContactsPage from "./pages/ContactsPage.jsx";
+import SocialVideosPage from "./pages/SocialVideosPage.jsx";
+import LogPage from "./pages/LogPage.jsx";
+import TypeStylesPage from "./pages/TypeStylesPage.jsx";
+import AppSettingsPage from "./pages/AppSettingsPage.jsx";
+import WebsiteTeamPage from "./pages/WebsiteTeamPage.jsx";
+import WebsiteSubscribersPage from "./pages/WebsiteSubscribersPage.jsx";
+import WebsiteContentPage from "./pages/WebsiteContentPage.jsx";
+import LinkHubPage from "./pages/LinkHubPage.jsx";
+import QrGeneratorPage from "./pages/QrGeneratorPage.jsx";
+import AdminPreferencesPage from "./pages/AdminPreferencesPage.jsx";
+import FormsPage from "./pages/FormsPage.jsx";
+import FormEditorPage from "./pages/FormEditorPage.jsx";
+import NotFoundPage from "./pages/NotFoundPage.jsx";
+import AccessPage from "./pages/AccessPage.jsx";
+import WeeklyReportPage from "./pages/WeeklyReportPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
+import AnalyticsPage from "./pages/AnalyticsPage.jsx";
+import McpAccessPage from "./pages/McpAccessPage.jsx";
+import McpConsentPage from "./pages/McpConsentPage.jsx";
+import OperationsQueuePage from "./pages/OperationsQueuePage.jsx";
+import OperationsHistoryPage from "./pages/OperationsHistoryPage.jsx";
+import { OPERATIONS_UI_ENABLED } from "./config/features.js";
+import { PROJECTS_UI_ENABLED } from "./config/features.js";
+import { ProjectsHandoffPage, ProjectsOverviewPage } from "./pages/ProjectsOverviewPage.jsx";
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/mcp/authorize" element={<McpConsentPage />} />
+
+        <Route element={<AuthGuard />}>
+          <Route element={<AppLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="/places" element={<PlacesPage />} />
+            <Route path="/submissions/new" element={<PendingNewPage />} />
+            <Route path="/submissions/edits" element={<PendingEditsPage />} />
+            <Route path="/events" element={<EventsPage />} />
+            <Route path="/events/edits" element={<EventEditsPage />} />
+            <Route path="/eid" element={<EidPage />} />
+            <Route path="/reviews" element={<ReviewsPage />} />
+            <Route path="/wishes" element={<WishesPage />} />
+            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/social-videos" element={<SocialVideosPage />} />
+            <Route path="/type-styles" element={<TypeStylesPage />} />
+            <Route path="/app-settings" element={<AppSettingsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/workspace/preferences" element={<AdminPreferencesPage />} />
+            <Route path="/workspace/profile" element={<ProfilePage />} />
+            <Route path="/workspace/access" element={<AccessPage />} />
+            <Route path="/workspace/mcp" element={<McpAccessPage />} />
+            {OPERATIONS_UI_ENABLED && <Route path="/workspace/queue" element={<OperationsQueuePage />} />}
+            {OPERATIONS_UI_ENABLED && <Route path="/workspace/history" element={<OperationsHistoryPage />} />}
+            {PROJECTS_UI_ENABLED && <Route path="/workspace/projects" element={<ProjectsOverviewPage />} />}
+            {PROJECTS_UI_ENABLED && <Route path="/workspace/projects/:projectId" element={<ProjectsHandoffPage />} />}
+            {PROJECTS_UI_ENABLED && <Route path="/workspace/my-work" element={<ProjectsHandoffPage />} />}
+            {PROJECTS_UI_ENABLED && <Route path="/workspace/tasks/:taskId" element={<ProjectsHandoffPage />} />}
+            <Route path="/workspace/weekly-report" element={<WeeklyReportPage />} />
+            <Route path="/log" element={<LogPage />} />
+            <Route path="/website/team" element={<WebsiteTeamPage />} />
+            <Route path="/website/subscribers" element={<WebsiteSubscribersPage />} />
+            <Route path="/website/content" element={<WebsiteContentPage />} />
+            <Route path="/links" element={<LinkHubPage />} />
+            <Route path="/links/qr" element={<QrGeneratorPage />} />
+            <Route path="/forms" element={<FormsPage />} />
+            <Route path="/forms/:id" element={<FormEditorPage />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}

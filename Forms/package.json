@@ -1,0 +1,11 @@
+{
+  "name": "karamah-forms",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node ../tooling/dev.mjs forms",
+    "build": "node scripts/build.mjs",
+    "test": "playwright test --config tests/playwright.config.js"
+  }
+}

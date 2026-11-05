@@ -1,0 +1,11 @@
+{
+  "name": "karamah-links",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node ../tooling/dev.mjs links",
+    "build": "node scripts/build.mjs",
+    "test": "playwright test --config tests/playwright.config.js"
+  }
+}

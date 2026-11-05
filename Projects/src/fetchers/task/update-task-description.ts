@@ -1,0 +1,23 @@
+import { client } from "@karamah/projects-libs";
+import { HttpError } from "@/lib/http-error";
+import type Task from "@/types/task";
+
+async function updateTaskDescription(taskId: string, task: Task) {
+  const response = await client.task.description[":id"].$put({
+    param: { id: taskId },
+    json: {
+      description: task.description || "",
+      expectedRevision: task.revision,
+    },
+  });
+
+  if (!response.ok) {
+    throw await HttpError.fromResponse(response);
+  }
+
+  const data = await response.json();
+
+  return data;
+}
+
+export default updateTaskDescription;

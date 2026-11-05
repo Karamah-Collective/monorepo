@@ -1,0 +1,572 @@
+/* dark-mode.css — Dark mode overrides for Karamah Collective
+   Dark palette derived from brand: Deep #0B3C49, Teal #08705B, Gold #F2C879
+   Toggle is a floating button (bottom-right on all viewports). */
+
+/* ======================== Toggle Button ======================== */
+.kc-theme-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 9999px;
+  border: 1px solid var(--kc-border-strong);
+  background: rgba(253, 252, 248, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--kc-ink);
+  cursor: pointer;
+  flex: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition:
+    background 180ms ease,
+    border-color 220ms ease,
+    color 180ms ease,
+    opacity 300ms ease,
+    transform 300ms ease,
+    bottom 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-tap-highlight-color: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+
+.kc-theme-toggle.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.kc-theme-toggle.is-shifted {
+  bottom: 80px;
+}
+
+.kc-theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  transition:
+    transform 350ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease;
+}
+
+.kc-theme-toggle .kc-icon-sun { display: none; }
+.kc-theme-toggle .kc-icon-moon { display: block; }
+.kc-theme-toggle:active svg { transform: scale(0.88); }
+
+/* ======================== Transition helper ======================== */
+html.dark-transition,
+html.dark-transition *,
+html.dark-transition *::before,
+html.dark-transition *::after {
+  transition:
+    background-color 300ms ease,
+    border-color 300ms ease,
+    color 300ms ease !important;
+  transition-delay: 0s !important;
+}
+
+/* ================================================================== */
+/*  Dark-mode overrides — warm brand dark palette                     */
+/* ================================================================== */
+
+html.dark {
+  /* Semantic tokens — Dark */
+  --kc-ink:        #ede8df;
+  --kc-ink-soft:   #b5ada3;
+  --kc-ink-faint:  #7a7368;
+  --kc-bg:         #0d1a1f;
+  --kc-bg-alt:     #111f25;
+  --kc-surface:    #182a32;
+  --kc-surface-soft: rgba(24, 42, 50, 0.7);
+  --kc-surface-glass: rgba(24, 42, 50, 0.6);
+  --kc-accent:     #5cc4a8;
+  --kc-accent-soft: rgba(92, 196, 168, 0.08);
+  --kc-gold-soft:  rgba(242, 200, 121, 0.1);
+  --kc-border:     rgba(237, 232, 223, 0.1);
+  --kc-border-soft: rgba(237, 232, 223, 0.06);
+  --kc-border-strong: rgba(186, 179, 151, 0.22);
+  --kc-hover-bg:   rgba(237, 232, 223, 0.05);
+  --badge-bg:      rgba(8, 112, 91, 0.12);
+  --accent:        #5cc4a8;
+  --kc-sage:       #7a7368;
+
+  /* Aurora dark adjustments */
+  --kc-frost-alpha: 0.12;
+  --kc-frost-inner: 0.08;
+  --kc-frost-bloom-alpha: 0.1;
+  --kc-aurora-opacity: 0.55;
+  --kc-aurora-shimmer-opacity: 0.25;
+  --kc-aurora-teal-a: 0.52;
+  --kc-aurora-teal-b: 0.40;
+  --kc-aurora-teal-c: 0.34;
+  --kc-aurora-gold-a: 0.48;
+  --kc-aurora-gold-b: 0.34;
+  --kc-aurora-gold-c: 0.28;
+
+  color-scheme: dark;
+}
+
+/* ── Body & Main ──────────────────────────────────────────── */
+html.dark body {
+  background-color: var(--kc-bg);
+  color: var(--kc-ink);
+}
+
+/* ── Noise overlay — lighter in dark mode ─────────────────── */
+html.dark body::after {
+  opacity: 0.03;
+}
+
+/* ── Topbar / Header ──────────────────────────────────────── */
+html.dark #topbar::after {
+  background: linear-gradient(to left, var(--kc-bg), transparent) !important;
+}
+
+html.dark #topbar > div {
+  background: rgba(13, 26, 31, 0.85) !important;
+  border-bottom-color: var(--kc-border);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  html.dark #topbar > div {
+    background: rgba(13, 26, 31, 0.6) !important;
+  }
+}
+
+html.dark #topbar[data-scrolled="true"]::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(92, 196, 168, 0.2) 50%,
+    transparent 100%
+  );
+}
+
+/* ── Navigation Buttons ───────────────────────────────────── */
+html.dark .kc-navbtn { color: var(--kc-ink-soft); }
+
+html.dark .kc-navbtn[data-active="true"] {
+  color: var(--kc-ink);
+  text-shadow: 0 0 0.65px currentColor, 0 0 0.65px currentColor;
+}
+
+html.dark .kc-navbtn-contact {
+  background: var(--kc-gold);
+  color: #0B3C49;
+  border-color: rgba(242, 200, 121, 0.9);
+}
+
+html.dark .kc-navbtn-contact[data-active="true"] {
+  background: var(--kc-gold);
+  color: #0B3C49;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.dark .kc-navbtn-contact:hover {
+    border-color: rgba(242, 200, 121, 0.6);
+  }
+}
+
+/* Nav pill */
+html.dark .kc-navpill {
+  background: rgba(237, 232, 223, 0.06);
+  border: 1px solid rgba(237, 232, 223, 0.08);
+}
+
+html.dark .kc-navpill::before {
+  background: linear-gradient(180deg, rgba(237, 232, 223, 0.08), rgba(237, 232, 223, 0.01));
+}
+
+html.dark .kc-navpill::after {
+  background: radial-gradient(140% 120% at 50% 0%, rgba(237, 232, 223, 0.06), transparent 60%);
+}
+
+/* Brand text */
+html.dark .kc-brand-text { color: var(--kc-ink); }
+html.dark .kc-brand-logo { outline-color: var(--kc-border); }
+
+/* ── Sections ─────────────────────────────────────────────── */
+html.dark .kc-section { background-color: var(--kc-bg); }
+html.dark .kc-section.alt { background-color: var(--kc-bg-alt); }
+html.dark .kc-section[data-section]::before { background: var(--kc-border); }
+
+/* ── Hero ──────────────────────────────────────────────────── */
+html.dark .kc-hero { background: var(--kc-bg); }
+
+html.dark .kc-hero::after {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(13, 26, 31, 0.5) 70%,
+    rgba(13, 26, 31, 1) 100%
+  );
+}
+
+html.dark .kc-hero-bg { background: var(--kc-bg); }
+html.dark .kc-hero-bg::before { mix-blend-mode: screen; }
+
+html.dark .kc-hero-bg::after {
+  background:
+    radial-gradient(circle at 18% 35%, rgba(237, 232, 223, 0.05) 0%, rgba(237, 232, 223, 0.01) 38%, transparent 62%),
+    radial-gradient(circle at 78% 40%, rgba(237, 232, 223, 0.04) 0%, rgba(237, 232, 223, 0.01) 42%, transparent 68%),
+    radial-gradient(circle at 48% 68%, rgba(237, 232, 223, 0.03) 0%, rgba(237, 232, 223, 0.005) 46%, transparent 72%),
+    rgba(13, 26, 31, var(--kc-frost-alpha));
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+html.dark .kc-btn {
+  background: var(--kc-surface);
+  color: var(--kc-ink);
+  border-color: var(--kc-border-strong);
+}
+
+html.dark .kc-btn,
+html.dark .kc-btn i,
+html.dark .kc-btn svg {
+  color: var(--kc-ink);
+}
+
+html.dark .kc-btn-outline {
+  background: var(--kc-surface);
+  border-color: var(--kc-border-strong);
+}
+
+html.dark .kc-btn-primary {
+  background: var(--kc-gold);
+  color: #0B3C49;
+  border-color: rgba(242, 200, 121, 0.9);
+}
+
+html.dark .kc-btn-primary,
+html.dark .kc-btn-primary i,
+html.dark .kc-btn-primary svg {
+  color: #0B3C49;
+}
+
+html.dark .kc-btn:active { border-color: rgba(237, 232, 223, 0.2); }
+html.dark .kc-btn-primary:active { border-color: rgba(242, 200, 121, 0.7); }
+
+@media (hover: hover) and (pointer: fine) {
+  html.dark .kc-btn:hover { border-color: rgba(237, 232, 223, 0.18); }
+  html.dark .kc-btn-outline:hover { border-color: rgba(237, 232, 223, 0.18); }
+  html.dark .kc-btn-primary:hover {
+    border-color: rgba(242, 200, 121, 0.6);
+    text-shadow: 0 0 0.65px currentColor;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  html.dark .kc-btn:active { border-color: rgba(237, 232, 223, 0.2); }
+  html.dark .kc-btn-outline:active { border-color: rgba(237, 232, 223, 0.18); }
+  html.dark .kc-btn-primary:active { border-color: rgba(242, 200, 121, 0.7); }
+}
+
+/* Hero "explore" button */
+html.dark .kc-hero .kc-btn:not(.kc-btn-primary) {
+  background-color: var(--kc-surface);
+  color: var(--kc-ink);
+  border-color: var(--kc-border-strong);
+}
+
+/* ── Cards ────────────────────────────────────────────────── */
+html.dark .kc-card {
+  border-color: var(--kc-border) !important;
+  background-color: var(--kc-surface);
+}
+
+html.dark .kc-card:focus-visible {
+  border-color: rgba(237, 232, 223, 0.2) !important;
+  outline: 2px solid rgba(237, 232, 223, 0.06);
+}
+
+html.dark .kc-card:active { border-color: rgba(237, 232, 223, 0.16) !important; }
+html.dark .kc-card:focus { border-color: rgba(237, 232, 223, 0.16) !important; }
+html.dark .kc-card-full:not(.kc-card-no-accent):active { border-left-color: var(--accent) !important; }
+html.dark .kc-card-full:not(.kc-card-no-accent):focus { border-left-color: var(--accent) !important; }
+html.dark .kc-card-full:not(.kc-card-no-accent):focus-visible { border-left-color: var(--accent) !important; }
+
+@media (hover: hover) and (pointer: fine) {
+  html.dark .kc-card:hover { border-color: rgba(237, 232, 223, 0.18) !important; }
+  html.dark .kc-card-full:not(.kc-card-no-accent):hover { border-left-color: var(--accent) !important; }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  html.dark .kc-card { transition: border-color 180ms ease; }
+  html.dark .kc-card:active,
+  html.dark .kc-card:focus,
+  html.dark .kc-card:focus-visible {
+    border-color: rgba(237, 232, 223, 0.18) !important;
+    outline: none;
+    box-shadow: none;
+  }
+}
+
+html.dark .kc-callout { background: var(--kc-surface); }
+
+/* Card variants */
+html.dark .kc-card[data-variant="pillar"] {
+  background: var(--kc-accent-soft);
+  border-color: rgba(92, 196, 168, 0.08) !important;
+}
+
+html.dark .kc-card-full:not(.kc-card-no-accent) {
+  border-left-color: var(--accent) !important;
+}
+
+/* Inner cards within cards (disclaimer boxes) */
+html.dark .kc-disclaimer-box {
+  background-color: rgba(13, 26, 31, 0.5);
+  border-color: var(--kc-border);
+}
+
+/* ── Inputs ───────────────────────────────────────────────── */
+html.dark .kc-input,
+html.dark .kc-textarea {
+  background: var(--kc-surface);
+  border-color: var(--kc-border-strong);
+  color: var(--kc-ink);
+}
+
+html.dark .kc-input::placeholder,
+html.dark .kc-textarea::placeholder {
+  color: var(--kc-ink-faint);
+}
+
+html.dark .kc-input:focus,
+html.dark .kc-textarea:focus {
+  border-color: rgba(92, 196, 168, 0.35);
+}
+
+html.dark .kc-input:focus-visible,
+html.dark .kc-textarea:focus-visible {
+  border-color: rgba(92, 196, 168, 0.35);
+  outline: 2px solid rgba(237, 232, 223, 0.05);
+}
+
+html.dark .kc-select {
+  background: var(--kc-surface);
+  border-color: var(--kc-border-strong);
+  color: var(--kc-ink);
+}
+
+html.dark .kc-select:focus {
+  border-color: rgba(92, 196, 168, 0.35);
+}
+
+/* ── Snackbar ─────────────────────────────────────────────── */
+html.dark .kc-snackbar .kc-snackbar-card {
+  background: rgba(22, 34, 41, 0.95);
+  border-color: var(--kc-border);
+  color: var(--kc-ink);
+}
+
+html.dark .kc-x { color: var(--kc-ink-soft); }
+html.dark .kc-x:hover { color: var(--kc-ink); }
+
+html.dark .kc-snackbar-card.border-emerald-200 { border-color: rgba(92, 196, 168, 0.25); }
+html.dark .kc-snackbar-card.border-rose-200 { border-color: rgba(185, 28, 28, 0.35); }
+html.dark .bg-emerald-500 { background-color: #5cc4a8; }
+
+/* ── Avatar ───────────────────────────────────────────────── */
+html.dark .kc-avatar-text {
+  background: var(--kc-accent-soft);
+  border-color: rgba(237, 232, 223, 0.08);
+  color: var(--kc-ink-soft);
+}
+
+html.dark .kc-avatar-wrap {
+  background: var(--kc-bg-alt);
+  outline-color: var(--kc-border);
+}
+
+/* ── Focus Styles ─────────────────────────────────────────── */
+html.dark :where(a, button, input, textarea, select, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid rgba(92, 196, 168, 0.2);
+}
+
+/* ── Sending Animation ────────────────────────────────────── */
+html.dark .kc-sending-btn::before {
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(237, 232, 223, 0.04) 36%,
+    rgba(237, 232, 223, 0.08) 50%,
+    rgba(237, 232, 223, 0.04) 64%,
+    transparent 80%
+  );
+}
+
+/* ── Program card fade gradient ────────────────────────────── */
+@media (min-width: 768px) {
+  html.dark .kc-programcard:not(.is-expanded) .kc-program-body::after {
+    background: linear-gradient(to bottom, rgba(22, 34, 41, 0), var(--kc-surface));
+  }
+}
+
+html.dark .kc-program-portal {
+  background: var(--kc-surface);
+  border-color: var(--kc-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Lucide Icons ─────────────────────────────────────────── */
+html.dark .kc-programcard i[data-lucide],
+html.dark .kc-programcard svg.lucide,
+html.dark .kc-program-chevron i[data-lucide],
+html.dark .kc-program-chevron svg.lucide,
+html.dark #contact i[data-lucide],
+html.dark #contact svg.lucide,
+html.dark #contact a[aria-label] i[data-lucide],
+html.dark #contact a[aria-label] svg.lucide {
+  color: var(--kc-ink);
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+html.dark .kc-footer {
+  background: rgba(13, 26, 31, 0.9) !important;
+  border-top-color: var(--kc-border);
+}
+
+/* ── Scroll Top Button ────────────────────────────────────── */
+html.dark #scrolltop {
+  background: rgba(22, 34, 41, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-color: var(--kc-border-strong);
+  color: var(--kc-ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Toggle button dark styles ────────────────────────────── */
+html.dark .kc-theme-toggle {
+  background: rgba(22, 34, 41, 0.92);
+  border-color: var(--kc-border);
+  color: var(--kc-ink-soft);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .kc-theme-toggle .kc-icon-sun { display: block; }
+html.dark .kc-theme-toggle .kc-icon-moon { display: none; }
+
+/* ── Badge ────────────────────────────────────────────────── */
+html.dark .kc-badge-dev {
+  background: var(--kc-accent-soft);
+  border-color: var(--kc-border);
+  color: var(--kc-ink-faint);
+}
+
+/* ── Social & contact link buttons ────────────────────────── */
+html.dark .kc-social-btn {
+  background-color: var(--kc-surface);
+  border-color: var(--kc-border);
+  color: var(--kc-ink);
+}
+
+html.dark .kc-social-btn:hover {
+  background: var(--kc-bg-alt);
+}
+
+/* ── Checkbox dark ────────────────────────────────────────── */
+html.dark #contact-form input[type="checkbox"] {
+  border-color: var(--kc-border-strong);
+  background-color: var(--kc-surface);
+}
+
+html.dark #contact-form input[type="checkbox"]::before {
+  background-color: #0B3C49;
+}
+
+html.dark #contact-form input[type="checkbox"]:checked {
+  background-color: var(--kc-gold);
+  border-color: var(--kc-gold);
+}
+
+/* ── Logo panel ───────────────────────────────────────────── */
+html.dark .kc-logo-panel-inner .kc-blockquote {
+  border-left-color: var(--kc-border-strong);
+}
+
+/* ── Selection ────────────────────────────────────────────── */
+html.dark ::selection {
+  background: rgba(92, 196, 168, 0.25);
+  color: var(--kc-ink);
+}
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+html.dark {
+  scrollbar-color: #2a4a50 var(--kc-bg);
+}
+
+html.dark ::-webkit-scrollbar-track { background: var(--kc-bg); }
+html.dark ::-webkit-scrollbar-thumb { background: #2a4a50; border-radius: 4px; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #3a5a60; }
+
+/* ── Hero SVG logo — brand teal for dark ──────────────────── */
+html.dark .kc-logo {
+  color: #5cc4a8;
+  animation: kcInkDriftDark 20s cubic-bezier(.45,0,.2,1) infinite !important;
+  filter: drop-shadow(0 0 18px rgba(92, 196, 168, 0.15));
+}
+
+@keyframes kcInkDriftDark {
+  0%   { color: #5cc4a8; }
+  22%  { color: #6dd4b8; }
+  48%  { color: #8ee4cc; }
+  78%  { color: #6dd4b8; }
+  100% { color: #5cc4a8; }
+}
+
+html.dark .kc-depth { opacity: 0.08 !important; }
+html.dark .kc-whisper { mix-blend-mode: screen !important; }
+
+/* ── Privacy overlay dark mode ──────────────────────────────── */
+html.dark .kc-privacy-overlay.is-open .kc-privacy-backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+html.dark .kc-privacy-panel {
+  background: var(--kc-bg);
+  border-color: var(--kc-border);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+html.dark .kc-privacy-header {
+  border-bottom-color: var(--kc-border);
+}
+
+html.dark .kc-privacy-header h2 { color: var(--kc-ink) !important; }
+
+html.dark .kc-privacy-close { color: var(--kc-ink-soft); }
+
+html.dark .kc-privacy-close:hover {
+  background: var(--kc-hover-bg);
+  color: var(--kc-ink);
+  border-color: var(--kc-border);
+}
+
+html.dark .kc-privacy-body { color: var(--kc-ink-soft); }
+html.dark .kc-privacy-body > p { color: var(--kc-ink-faint) !important; }
+
+html.dark .kc-privacy-body::-webkit-scrollbar-thumb {
+  background: rgba(186, 179, 151, 0.2);
+}
+
+html.dark .kc-privacy-section h3 { color: var(--kc-ink); }
+html.dark .kc-privacy-section p { color: var(--kc-ink-soft); }
+html.dark .kc-privacy-section ul li { color: var(--kc-ink-soft); }
+html.dark .kc-privacy-section ul li::before { background: var(--kc-ink-faint); }
+
+/* ── Program link box dark ────────────────────────────────── */
+html.dark .kc-program-link-box {
+  background-color: rgba(13, 26, 31, 0.5);
+  border-color: var(--kc-border);
+}
+
+html.dark .kc-program-link-box a {
+  color: var(--accent);
+}
