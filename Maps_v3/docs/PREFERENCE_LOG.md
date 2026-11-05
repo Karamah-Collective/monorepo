@@ -5564,3 +5564,5 @@ and this log.
 - Phone destination scroll bodies reserve the same bottom clearance as Home,
   keeping the persistent navbar from covering the final Events, Places, or
   Profile content.
+- The Maps_v3 build treats `.well-known` as optional because the generated
+  production branch intentionally omits that developer-only directory.
