@@ -17,6 +17,7 @@ import { allowedOrigin, json } from "../_shared.js";
 import { buildLabelToIdMap, normaliseAddress, normaliseTags, isSponsorActiveForDate, extractCityFromAddress } from "../_gas-compat.js";
 import { parseGoogleReviewsField } from "../_google-maps.js";
 import { getPlaceIdsWithReviewImages } from "../_review-images.js";
+import { getPlaceIdsWithPhotos } from "../_place-photos.js";
 import { cleanPublicUrl, fetchMetadata } from "../_link-hub.js";
 
 const SPONSOR_TIERS = ["basic", "featured", "spotlight"];
@@ -237,7 +238,11 @@ async function getPlaces(db) {
   const labelToId = await buildLabelToIdMap(db);
   const promoMap = await getPromoMap(db);
   const mapsLinkMap = await _getMapsLinkMap(db);
-  const placesWithImages = await getPlaceIdsWithReviewImages(db);
+  const [reviewImagePlaces, standalonePhotoPlaces] = await Promise.all([
+    getPlaceIdsWithReviewImages(db),
+    getPlaceIdsWithPhotos(db),
+  ]);
+  const placesWithImages = new Set([...reviewImagePlaces, ...standalonePhotoPlaces]);
   const { results } = await db.prepare(
     `SELECT p.*,
        (SELECT np.timestamp

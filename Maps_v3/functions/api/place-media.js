@@ -6,6 +6,7 @@ import { allowedOrigin, json } from "../_shared.js";
 import { findPlaceIdFromText } from "../_google-maps.js";
 import { readAppSettings } from "../_app-settings.js";
 import { getPlaceReviewImages } from "../_review-images.js";
+import { getPlacePhotos } from "../_place-photos.js";
 
 const MAX_PHOTOS = 4;
 const PHOTO_MAX_WIDTH = 1200;
@@ -72,7 +73,11 @@ export async function onRequestGet({ request, env }) {
     const placeId = requestUrl.searchParams.get("placeId") || "";
     const communityOnly = requestUrl.searchParams.get("communityOnly") === "1";
     if (!PLACE_ID_RE.test(placeId)) return json({ error: "Invalid place" }, 400, headers);
-    const communityPhotos = await getPlaceReviewImages(env.DB, placeId);
+    const [reviewPhotos, standalonePhotos] = await Promise.all([
+      getPlaceReviewImages(env.DB, placeId),
+      getPlacePhotos(env.DB, placeId),
+    ]);
+    const communityPhotos = [...reviewPhotos, ...standalonePhotos];
     if (communityOnly || !env.MAPS_API_KEY) return json({ communityPhotos, googlePhotos: [] }, 200, headers);
     const { settings } = await readAppSettings(env.DB);
     if (!settings.googlePlacePhotosEnabled) return json({ communityPhotos, googlePhotos: [], disabled: true }, 200, headers);

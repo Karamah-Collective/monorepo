@@ -87,6 +87,20 @@ test.describe("Phone app pages", () => {
       return getComputedStyle(document.querySelector(".phone-home-header")).backgroundImage;
     });
     expect(darkHeroBackground).toContain("Manarah_Home_Dark_16x9.png");
+    const footerStyle = await page.evaluate(() => {
+      const discover = document.querySelector(".phone-home-discover-copy");
+      const place = document.querySelector(".phone-home-place-copy");
+      const discoverTitle = discover?.querySelector("strong");
+      const placeTitle = place?.querySelector("strong");
+      return {
+        discoverBackground: getComputedStyle(discover).backgroundColor,
+        placeBackground: getComputedStyle(place).backgroundColor,
+        discoverFont: getComputedStyle(discoverTitle).font,
+        placeFont: getComputedStyle(placeTitle).font,
+      };
+    });
+    expect(footerStyle.placeBackground).toBe(footerStyle.discoverBackground);
+    expect(footerStyle.placeFont).toBe(footerStyle.discoverFont);
     const homeTypography = await page.evaluate(() => {
       const styleOf = (selector) => Number.parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
       const home = document.querySelector("#phone-home-page");
@@ -299,11 +313,12 @@ test.describe("Phone app pages", () => {
     });
     const pillStyle = await pill.evaluate((element) => {
       const style = getComputedStyle(element);
-      return { width: parseFloat(style.width), height: parseFloat(style.height), after: getComputedStyle(element, "::after").content };
+      return { width: parseFloat(style.width), height: parseFloat(style.height), radius: parseFloat(style.borderTopLeftRadius), after: getComputedStyle(element, "::after").content };
     });
     expect(navStyle.height).toBeGreaterThan(40);
     expect(navStyle.radius).toBeGreaterThan(18);
-    expect(pillStyle.width).toBeGreaterThan(pillStyle.height);
+    expect(pillStyle.width).toBeGreaterThanOrEqual(pillStyle.height);
+    expect(pillStyle.radius).toBeCloseTo(Math.min(pillStyle.width, pillStyle.height) / 2, 1);
     expect(pillStyle.after).toMatch(/none|normal/);
     const homeTransform = await pill.evaluate((element) => getComputedStyle(element).transform);
     await page.locator("#places-btn").click();
@@ -536,6 +551,19 @@ test.describe("Phone app pages", () => {
     }));
     expect(eventScroll.surface).toBe("hidden");
     expect(eventScroll.content).toBe("auto");
+    const pageBottomClearance = await page.evaluate(() => {
+      const readPadding = (selector) => parseFloat(getComputedStyle(document.querySelector(selector)).paddingBottom);
+      const navHeight = document.querySelector("#tab-bar").getBoundingClientRect().height;
+      return {
+        navHeight,
+        events: readPadding("#events-list"),
+        places: readPadding("#places-scroll"),
+        profile: readPadding("#profile-sheet-body"),
+      };
+    });
+    expect(pageBottomClearance.events).toBeGreaterThan(pageBottomClearance.navHeight);
+    expect(pageBottomClearance.places).toBeGreaterThan(pageBottomClearance.navHeight);
+    expect(pageBottomClearance.profile).toBeGreaterThan(pageBottomClearance.navHeight);
     const overflow = await page.evaluate(() => ({
       body: document.documentElement.scrollWidth,
       viewport: window.innerWidth,
@@ -611,7 +639,7 @@ test.describe("Phone app pages", () => {
       toolbarTransform: getComputedStyle(element.querySelector(".phone-home-toolbar")).transform,
       copyTransform: getComputedStyle(element.querySelector(".phone-home-welcome")).transform,
     }));
-    expect(homeMotion.shift).toBeLessThan(0);
+    expect(homeMotion.shift).toBeGreaterThan(0);
     expect(homeMotion.opacity).toBeLessThan(1);
     expect(homeMotion.bannerSize).not.toBe("cover");
     expect(homeMotion.toolbarTransform).not.toBe("none");

@@ -316,10 +316,20 @@ async function unsaveSavedPlace(db, emailHash, { kind, placeId, pinLat, pinLng }
 
 // Code.gs:3492 handleAccountErase — atomic via db.batch(), unlike Code.gs's
 // sequential per-sheet deletes (which it documented as never all-or-nothing).
-async function handleAccountErase(db, emailHash) {
-  const names = ERASE_TARGETS.map((t) => t.table);
+async function handleAccountErase(db, emailHash, media) {
+  const targets = [...ERASE_TARGETS];
+  let objectKeys = [];
   try {
-    await db.batch(ERASE_TARGETS.map((t) => db.prepare(`DELETE FROM ${t.table} WHERE ${t.col} = ?`).bind(emailHash)));
+    const { results } = await db.prepare("SELECT object_key FROM place_photos WHERE email_hash = ?").bind(emailHash).all();
+    objectKeys = results.map((row) => row.object_key).filter(Boolean);
+    targets.push({ table: "place_photos", col: "email_hash" });
+  } catch { /* The additive photo migration may not be applied yet. */ }
+  const names = targets.map((t) => t.table);
+  try {
+    await db.batch(targets.map((t) => db.prepare(`DELETE FROM ${t.table} WHERE ${t.col} = ?`).bind(emailHash)));
+    if (objectKeys.length && media) {
+      try { await media.delete(objectKeys); } catch { /* D1 deletion remains authoritative. */ }
+    }
     return { deleted: names, failed: [] };
   } catch {
     return { deleted: [], failed: names };
@@ -353,7 +363,7 @@ export async function onRequestPost(context) {
     if (action === "erase-data") {
       // Bypasses the firstSeenAt stamp below — an account being erased
       // should not have its row resurrected by the very request deleting it.
-      const result = await handleAccountErase(db, emailHash);
+      const result = await handleAccountErase(db, emailHash, env.MEDIA);
       return json({ success: true, ...result }, 200, headers);
     }
 

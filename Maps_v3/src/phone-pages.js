@@ -224,7 +224,15 @@ function _attachPageScroll(page) {
       const heroHeight = Math.max(1, scrollElement.querySelector(".phone-home-header")?.offsetHeight || 1);
       const progress = Math.min(1, top / heroHeight);
       const pull = homePullProgress;
-      scrollElement.style.setProperty("--phone-home-header-shift", `${(-12 * progress) + (14 * pull)}px`);
+      const prayerCard = scrollElement.querySelector("#phone-prayer-state");
+      const prayerHeight = prayerCard?.offsetHeight || 0;
+      const initialOverlap = prayerCard
+        ? Math.max(0, -(Number.parseFloat(getComputedStyle(prayerCard).marginTop) || 0))
+        : 0;
+      // Keep the initial overlap, then let the banner lag until the card covers half its height.
+      const targetOverlap = prayerHeight * 0.5;
+      const parallaxShift = Math.max(0, targetOverlap - initialOverlap) * progress;
+      scrollElement.style.setProperty("--phone-home-header-shift", `${parallaxShift + (14 * pull)}px`);
       scrollElement.style.setProperty("--phone-home-header-opacity", String(1 - (0.08 * progress)));
       scrollElement.style.setProperty("--phone-home-scroll-progress", String(progress));
       scrollElement.style.setProperty("--phone-home-banner-size", progress || pull ? `${100 + (12 * progress) + (8 * pull)}% auto` : "cover");
@@ -660,11 +668,9 @@ export function syncPhoneNavPill(tab = null) {
     // Measure inside a frame so navigation does not synchronously reflow first.
     const tabLeft = active.offsetLeft;
     const tabWidth = active.offsetWidth;
-    const width = Math.min(56, Math.max(44, tabWidth - 8));
-    const baseWidth = 48;
+    const width = 48;
     pill.style.setProperty("--phone-nav-pill-center", `${tabLeft + tabWidth / 2}px`);
-    pill.style.setProperty("--phone-nav-pill-width", `${baseWidth}px`);
-    pill.style.setProperty("--phone-nav-pill-scale-x", String(width / baseWidth));
+    pill.style.setProperty("--phone-nav-pill-width", `${width}px`);
     pill.style.setProperty("--phone-nav-pill-height", "34px");
     pill.hidden = false;
   });

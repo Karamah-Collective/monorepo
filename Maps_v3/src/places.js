@@ -9,6 +9,7 @@ import { dir, placeDestMarker, updateGoButton, openDirPanel, stopPick, loadShare
 import { track } from "./analytics.js";
 import { DAY_NAMES, DAY_NAMES_SHORT, FREQUENCY_OPTIONS, ORDINAL_OPTIONS, buildPattern, parsePattern, formatRecurrence, resolveOccurrences, nextOccurrence } from "./event-recurrence.js";
 import { getPlaceRating, buildStarDisplay, renderPlaceReviews, openPlaceReviewForm, openReviewsOverlay, loadReviews, hydrateReviews, registerPlaceMediaAvailability } from "./reviews.js";
+import { openPlacePhotoUpload } from "./place-photos.js";
 import { EVT } from "./events.js";
 import { addVerifiedEventVisit, addVerifiedVisit, eventHasEnded, eventHasOccurred, getTimelineCooldown, peekEventTimelineEligibility, peekTimelineEligibility } from "./timeline.js";
 import { clearPhoneWindowState, getPhonePage, goBackPhonePage, isPhone, navigatePhonePage, pushPhoneWindowState } from "./phone-pages.js";
@@ -2591,6 +2592,7 @@ export function openPlaceSheet(place, { fromListScrollTop = null } = {}) {
       onLayoutChange: () => {
         placeSheetSnap.remeasure({ preserveExpansion: true });
       },
+      onAddPhotos: (target, onClose, onOpen) => openPlacePhotoUpload(place.id, place.name, target, onClose, onOpen),
     });
   }).catch(() => { /* Photos are optional; place details remain complete. */ });
   const _onPlaceMediaChanged = (event) => {

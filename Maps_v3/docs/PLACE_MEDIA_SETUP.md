@@ -2,21 +2,22 @@
 
 The feature has two independent paths:
 
-- Community review photos are stored permanently in Cloudflare R2, with ownership and file metadata in D1.
+- Community photos are stored permanently in Cloudflare R2, with ownership and file metadata in the separate `place_photos` D1 table. A signed-in photo-only upload never creates or changes a review.
 - Google place photos are requested only after a visitor opens a place and only when the Admin toggle is enabled. They are not written to R2 or D1; D1 stores only the stable Google place ID.
 
 Community delivery is also demand-driven. The edge-cached places payload derives
-only a `hasImages` boolean from approved D1 rows. Review-image descriptors are
-not included in the global places/reviews payload; `/api/place-media` reads them
-for one place only after that place or its review window opens. The browser then
-lazy-loads each protected `/api/review-image` R2 response as it enters view.
+only a `hasImages` boolean from approved D1 rows. Photo descriptors are not
+included in the global places/reviews payload; `/api/place-media` reads review
+photos and standalone photos for one place only after that place opens. The
+browser then lazy-loads each protected `/api/review-image` or
+`/api/place-photo` R2 response as it enters view.
 
 ## 1. Create the R2 bucket
 
 1. Open Cloudflare Dashboard.
 2. Go to **R2 Object Storage** and choose **Create bucket**.
 3. Name the production bucket `manarah-media`.
-4. Do not enable public access or create a custom domain. Images are served through `/api/review-image`, which checks that the parent review is public.
+4. Do not enable public access or create a custom domain. Images are served through `/api/review-image` and `/api/place-photo`, which only expose published media.
 5. For Preview, create a separate bucket such as `manarah-media-preview` so test uploads never enter production storage.
 
 ## 2. Bind R2 to the Maps Pages project
@@ -31,23 +32,24 @@ lazy-loads each protected `/api/review-image` R2 response as it enters view.
 
 ## 3. Apply the D1 migration
 
-Apply `migrations/0016_place_media.sql` and then
-`migrations/0018_review_moderation.sql` to Preview first, then Production. The
-second migration adds reversible image visibility, moderation notes, and the
-hashed reviewer-ban table used by Admin. In the Cloudflare D1 console:
+Apply `migrations/0016_place_media.sql`, `migrations/0018_review_moderation.sql`,
+and `migrations/0056_place_photos.sql` to Preview first, then Production. The
+last migration adds the independent standalone-photo table. In the Cloudflare
+D1 console:
 
 1. Open the database used by the target environment.
 2. Open **Console**.
 3. Paste the complete migration and choose **Execute**.
-4. Confirm that `review_images`, `place_google_ids`, and `reviewer_bans` appear
-   under **Tables**, and that `reviews`/`review_images` contain their moderation
-   columns.
+4. Confirm that `review_images`, `place_photos`, `place_google_ids`, and
+   `reviewer_bans` appear under **Tables**, and that both photo tables contain
+   their ownership and visibility columns.
 
 If using Wrangler from the repository root, the equivalent production command is:
 
 ```sh
-npx wrangler d1 execute halal-finder-db --remote --file Maps/migrations/0016_place_media.sql
-npx wrangler d1 execute halal-finder-db --remote --file Maps/migrations/0018_review_moderation.sql
+npx wrangler d1 execute halal-finder-db --remote --file Maps_v3/migrations/0016_place_media.sql
+npx wrangler d1 execute halal-finder-db --remote --file Maps_v3/migrations/0018_review_moderation.sql
+npx wrangler d1 execute halal-finder-db --remote --file Maps_v3/migrations/0056_place_photos.sql
 ```
 
 Use the preview database name instead for Preview. Never point a preview command at the production database.
@@ -70,14 +72,15 @@ When ready:
 4. In Admin, open **Map settings → Search & discovery**.
 5. Turn on **Google place photos** and save.
 
-Turning the setting off stops new Google photo requests immediately. Community review photos remain available because they do not use Google.
+Turning the setting off stops new Google photo requests immediately. Community photos remain available because they do not use Google.
 
 ## Limits and lifecycle
 
-- Three images per review.
+- Three images per review, and three standalone images per signed-in account
+  and place.
 - Five MB per image.
 - Accepted formats: JPEG, PNG, WebP.
-- Admin-hidden reviews and images retain their R2 objects so moderation can be
-  reversed. User-deleted reviews still remove their R2 objects.
-- Deleting a place removes its review-media objects.
-- Community image responses are not browser/CDN cached, so review moderation or deletion takes effect on the next request.
+- Review image responses are not browser/CDN cached, so review moderation or
+  deletion takes effect on the next request. Standalone photos use the same
+  private R2 delivery boundary and are independently stored from reviews.
+- Deleting a place removes its review-media and standalone-photo objects.

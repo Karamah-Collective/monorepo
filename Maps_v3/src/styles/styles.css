@@ -6100,9 +6100,11 @@ body.dark-mode .detail-banner-placeholder--dark {
 .pp-media {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--sp-1h);
   margin-top: var(--sp-3);
   margin-inline: calc(var(--sp-8) * -1);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border-light);
   opacity: 0;
   transform: translateY(-4px);
   transition: opacity var(--t-med), transform var(--t-med);
@@ -6114,9 +6116,6 @@ body.dark-mode .detail-banner-placeholder--dark {
   align-items: center;
   justify-content: space-between;
   padding-inline: var(--sp-8);
-  font-size: var(--txt-base);
-  font-weight: var(--fw-medium);
-  color: var(--text-2);
 }
 .pp-media-count {
   display: inline-flex;
@@ -6125,6 +6124,19 @@ body.dark-mode .detail-banner-placeholder--dark {
   margin-left: var(--sp-1);
 }
 .pp-media-count:empty { display: none; }
+.pp-media-upload {
+  display: grid;
+  grid-template-rows: 1fr;
+  padding-inline: var(--sp-8);
+}
+.pp-media-upload.is-closed {
+  grid-template-rows: 0fr;
+  pointer-events: none;
+}
+.pp-media-upload-inner {
+  min-height: 0;
+  overflow: hidden;
+}
 .pp-media-controls {
   display: none;
   align-items: center;
@@ -11778,14 +11790,14 @@ body.dark-mode .sp-chip {
     width: var(--phone-nav-pill-width, 48px);
     height: var(--phone-nav-pill-height, 34px);
     border: 0;
-    border-radius: var(--r-pill);
+    border-radius: calc(var(--phone-nav-pill-height, 34px) / 2);
     background: var(--accent);
     box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 26%, transparent), inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
     pointer-events: none;
-    transform: translate3d(var(--phone-nav-pill-center, 0px), -50%, 0) translateX(-50%) scaleX(var(--phone-nav-pill-scale-x, 1));
+    transform: translate3d(var(--phone-nav-pill-center, 0px), -50%, 0) translateX(-50%);
     transform-origin: center;
     will-change: transform;
-    transition: transform 420ms var(--ease-expo), opacity 180ms ease;
+    transition: transform 420ms var(--ease-expo), width 420ms var(--ease-expo), opacity 180ms ease;
   }
   body.phone-app-pages #tab-bar .tab {
     z-index: 1;
@@ -14179,7 +14191,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
 
   #places-sheet.phone-page-surface:not(.shut),
   #profile-sheet.phone-page-surface:not(.shut),
-  #menu-sheet.phone-page-surface:not(.shut) { display: flex !important; flex-direction: column; padding-bottom: calc(var(--tab-h) + var(--safe-b)); }
+  #menu-sheet.phone-page-surface:not(.shut) { display: flex !important; flex-direction: column; padding-bottom: 0; }
   #menu-sheet.phone-page-surface.hide { display: none !important; }
   #places-sheet.phone-page-surface > .sheet-head,
   #profile-sheet.phone-page-surface > .sheet-head,
@@ -14814,6 +14826,14 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
   }
   .phone-profile-signed-out #profile-sheet-body > .sort-divider,
   .phone-profile-signed-out #profile-sheet-body > .menu-section { display: none; }
+
+  /* Page scroll bodies use Home's bottom-clearance model: the surface can run
+     behind the fixed navbar, while the final content scrolls above it. */
+  #places-sheet.phone-page-surface #places-scroll,
+  #events-overlay.phone-page-surface #events-list,
+  #profile-sheet.phone-page-surface > #profile-sheet-body {
+    padding-bottom: calc(var(--tab-h) + var(--safe-b) + var(--sp-7));
+  }
 
   /* All phone destinations share the Places page's quiet, compact shell. */
   .phone-page-surface > .sheet-head,
@@ -15928,9 +15948,12 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     html:not(.reduce-motion) .phone-home-entering #phone-week-events .phone-home-event,
     html:not(.reduce-motion) .phone-home-entering #phone-places-state,
     html:not(.reduce-motion) .phone-home-entering #phone-events-state,
+    html:not(.reduce-motion) .phone-home-entering .phone-home-section[aria-labelledby="phone-explore-title"] .phone-section-heading,
     html:not(.reduce-motion) .phone-home-entering .phone-home-section[aria-labelledby="phone-suggested-title"] .phone-section-heading,
     html:not(.reduce-motion) .phone-home-entering .phone-home-section[aria-labelledby="phone-week-title"],
     html:not(.reduce-motion) .phone-home-entering .phone-home-section[aria-labelledby="phone-week-title"] .phone-section-heading { opacity: 0; }
+    html:not(.reduce-motion) .phone-home-entering .phone-home-header { opacity: 0; translate: 0 -12px; }
+    html:not(.reduce-motion) .phone-home-entering .phone-home-discover { opacity: 0; clip-path: inset(0 100% 0 0 round var(--r-xl)); translate: -18px 0; }
     html:not(.reduce-motion) .phone-home-entering .phone-home-search-field { clip-path: inset(0 0 100% 0 round var(--r-lg)); translate: 0 8px; }
     html:not(.reduce-motion) .phone-home-entering #phone-prayer-state { clip-path: inset(0 100% 0 0 round var(--r-xl)); translate: -10px 0; }
     html:not(.reduce-motion) .phone-home-entering .phone-action-grid button:nth-child(odd) { translate: -18px 0; }
@@ -15949,6 +15972,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     body.welcome-dismissed .phone-home-entering .phone-action-grid button:nth-child(2) { animation-delay: 70ms; }
     body.welcome-dismissed .phone-home-entering .phone-action-grid button:nth-child(3) { animation-delay: 140ms; }
     body.welcome-dismissed .phone-home-entering .phone-action-grid button:nth-child(4) { animation-delay: 210ms; }
+    body.welcome-dismissed .phone-home-entering .phone-home-section[aria-labelledby="phone-explore-title"] .phone-section-heading { animation: phone-home-heading-left-enter 300ms var(--ease-expo) both; }
     body.welcome-dismissed .phone-home-entering .phone-home-section[aria-labelledby="phone-suggested-title"] .phone-section-heading { animation: phone-home-heading-left-enter 300ms var(--ease-expo) both; }
     body.welcome-dismissed .phone-home-entering .phone-home-section[aria-labelledby="phone-week-title"] .phone-section-heading { animation: phone-home-heading-rise-enter 300ms var(--ease-expo) both; }
     body.welcome-dismissed .phone-home-entering #phone-suggested-places .phone-home-place:nth-child(odd) { animation: phone-home-small-left-enter 180ms var(--ease-expo) both; }
@@ -15964,6 +15988,7 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     body.welcome-dismissed .phone-home-entering #phone-places-state { animation: phone-home-small-left-enter 300ms var(--ease-expo) both; }
     body.welcome-dismissed .phone-home-entering #phone-events-state { animation: phone-home-event-reveal 300ms var(--ease-expo) both; }
     body.welcome-dismissed .phone-home-entering .phone-home-section[aria-labelledby="phone-week-title"] { animation: phone-home-week-enter 680ms var(--ease-expo) both; }
+    body.welcome-dismissed .phone-home-entering .phone-home-discover { animation: phone-home-discover-enter 460ms var(--ease-expo) 180ms both; }
     body.welcome-dismissed .phone-home-entering #phone-home-title:not([hidden]) { animation: phone-home-name-type var(--phone-name-duration, 500ms) steps(var(--phone-name-steps, 10), end) both; }
     body.welcome-dismissed .phone-home-entering #phone-home-title:not([hidden])::after { animation: phone-home-caret-move var(--phone-name-duration, 500ms) steps(var(--phone-name-steps, 10), end) both, phone-home-caret-blink 500ms step-end infinite; }
 
@@ -15980,8 +16005,12 @@ body.dark-mode .eid-popup-wrap .maplibregl-popup-content::after {
     @keyframes phone-home-caret-move { from { left: 0; } to { left: 100%; } }
     @keyframes phone-home-caret-blink { 50% { opacity: 0; } }
     @keyframes phone-home-hero-enter {
-      from { background-size: 112% auto; background-position: center 58%; }
-      to { background-size: 100% auto; background-position: center 50%; }
+      from { opacity: 0; translate: 0 -12px; background-size: 112% auto; background-position: center 58%; }
+      to { opacity: 1; translate: 0 0; background-size: 100% auto; background-position: center 50%; }
+    }
+    @keyframes phone-home-discover-enter {
+      from { opacity: 0; clip-path: inset(0 100% 0 0 round var(--r-xl)); translate: -18px 0; }
+      to { opacity: 1; clip-path: inset(0 0 0 0 round var(--r-xl)); translate: 0 0; }
     }
     @keyframes phone-home-hero-copy-enter {
       from { opacity: 0; translate: 0 10px; }
@@ -17483,16 +17512,18 @@ html.reduce-motion #phone-home-page .phone-home-toolbar {
     align-items: center;
     align-self: stretch;
     min-width: 0;
-    padding: 0 0 0 10px;
+    padding: 8px 0 10px 10px;
+    background: var(--surface-2);
+    color: var(--text-1);
   }
 
   #phone-home-page .phone-home-place-copy strong {
     overflow: hidden;
     color: var(--text-1);
-    font-size: 12px;
-    font-weight: 750;
-    letter-spacing: -.025em;
-    line-height: 1.1;
+    font-size: var(--txt-sm);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-normal);
+    line-height: 18px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -17505,15 +17536,17 @@ html.reduce-motion #phone-home-page .phone-home-toolbar {
     display: grid;
     place-items: center;
     width: 32px;
-    padding: 0;
+    padding: 8px 10px 10px 0;
     justify-self: center;
-    color: var(--text-2);
+    background: var(--surface-2);
+    color: var(--text-1);
   }
 
   #phone-home-page .phone-home-place-arrow svg { width: 18px; height: 18px; }
 
   #phone-home-page .phone-home-place--has-preview::before { display: none; }
   #phone-home-page .phone-home-place--has-preview > :not(.phone-home-place-image) { position: relative; z-index: 2; }
+  #phone-home-page .phone-home-place--has-preview .phone-home-place-copy strong { text-shadow: none; }
 
   #phone-home-page .phone-home-community .phone-home-event {
     grid-template-columns: 48px minmax(0, 1fr) 20px;

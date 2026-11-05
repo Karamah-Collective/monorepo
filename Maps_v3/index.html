@@ -45,7 +45,7 @@
       integrity="sha384-p5cy4wHtKSqjnLUNjQ+8ffCwUp0vlLS+6lg1lc3qqXax2E1EmVCMCAimU+R0MOZH"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="src/styles/styles.css?v=20261027-21" />
+    <link rel="stylesheet" href="src/styles/styles.css?v=20261105-01" />
   </head>
   <body>
     <a href="#map" class="skip-link">Skip to map</a>
@@ -2327,14 +2327,14 @@
             </ul>
             <p><strong>Signing in, ratings, reviews &amp; saved places:</strong></p>
             <ul>
-              <li>Writing a review, or syncing your favourites, saved pins, visited places, and home location across devices, requires signing in through Firebase Authentication with Google, Microsoft, Facebook, or email/password</li>
+              <li>Writing a review, adding community photos, or syncing your favourites, saved pins, visited places, and home location across devices, requires signing in through Firebase Authentication with Google, Microsoft, Facebook, or email/password</li>
               <li>For email/password accounts, Firebase handles sign-up, sign-in, password resets, and email verification. We never see or store your password</li>
-              <li>Your rating (1 to 5), optional review text, and any review photos you choose to upload</li>
+              <li>Your rating (1 to 5), optional review text, and any community photos you choose to upload</li>
               <li>Saved place IDs, saved pin coordinates/names, visited-place IDs, and home location coordinates/name that you choose to sync</li>
               <li>If you choose “Add to timeline” while signed in, your device checks locally whether you are within 150 metres of the place and whether the location fix is precise enough. We store the place, a server-generated date/time, and a one-way account hash so you can see your private timeline; raw device coordinates and GPS accuracy are not sent or stored</li>
-              <li>A one-way cryptographic hash of your verified email address — never the email address itself — used to link your reviews and synced saved data to your account and to prevent duplicate or abusive submissions</li>
+              <li>A one-way cryptographic hash of your verified email address — never the email address itself — used to link your reviews, community photos, and synced saved data to your account and to prevent duplicate or abusive submissions</li>
             </ul>
-            <p>Place submissions are anonymous. Reviews and their uploaded photos are shown publicly without displaying your email address or any other sign-in detail.</p>
+            <p>Place submissions are anonymous. Reviews and community photos are shown publicly without displaying your email address or any other sign-in detail.</p>
 
             <h4>3. What We Don't Do</h4>
             <ul>
@@ -2384,12 +2384,12 @@
             </ul>
 
             <h4>8. Data Storage &amp; Security</h4>
-            <p>Place submissions, reviews, events, wishes, and account-synced saved data are transmitted over HTTPS and stored in a private Cloudflare D1 database accessible only to authorised Karamah Collective team members. Review photos are stored in a private Cloudflare R2 bucket and served publicly only while their review is published. Contact form messages are transmitted over HTTPS to our Cloudflare Function and sent to manarah@karamahcollective.com through Brevo; Brevo, not Manarah, handles the email delivery and SMTP processing for those messages. New contact messages are not stored in D1. Contact details are retained only as long as necessary to address your enquiry. Signing in is handled by Firebase Authentication (Google, Microsoft, Facebook, or email/password) — we never receive or store your password. Reviews and synced favourites, saved pins, visited places, and home location are linked to your account using only a one-way hash of your verified email address, retained to enforce review integrity (for example, one review per place per account) and provide account sync — your actual email address is never stored alongside this data. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
+            <p>Place submissions, reviews, community photos, events, wishes, and account-synced saved data are transmitted over HTTPS and stored in a private Cloudflare D1 database accessible only to authorised Karamah Collective team members. Community photos are stored in a private Cloudflare R2 bucket and served publicly only while their contribution is published. Contact form messages are transmitted over HTTPS to our Cloudflare Function and sent to manarah@karamahcollective.com through Brevo; Brevo, not Manarah, handles the email delivery and SMTP processing for those messages. New contact messages are not stored in D1. Contact details are retained only as long as necessary to address your enquiry. Signing in is handled by Firebase Authentication (Google, Microsoft, Facebook, or email/password) — we never receive or store your password. Reviews and synced favourites, saved pins, visited places, and home location are linked to your account using only a one-way hash of your verified email address, retained to enforce review integrity (for example, one review per place per account) and provide account sync — your actual email address is never stored alongside this data. We implement appropriate measures to safeguard data against unauthorised access or loss.</p>
 
             <p>Verified timeline events contain the canonical place ID/name and server-generated date/time, not raw device coordinates or GPS accuracy. They are stored only so your private timeline can work, are not published or used for advertising, and are removed by the existing “Erase my data” action.</p>
 
             <h4>9. Your Rights (GDPR)</h4>
-            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place submissions (which are anonymous), please include details that help us identify the relevant entry. For contact form emails, include the email address you used and the approximate submission date. For reviews, review photos, and account-synced saved data, we can locate your data using the email address associated with your account.</p>
+            <p>Under EU data protection law, you have the right to access, correct, or request deletion of any data associated with your submissions. For place submissions (which are anonymous), please include details that help us identify the relevant entry. For contact form emails, include the email address you used and the approximate submission date. For reviews, community photos, and account-synced saved data, we can locate your data using the email address associated with your account.</p>
             <p>Contact: <a href="mailto:manarah@karamahcollective.com">manarah@karamahcollective.com</a></p>
 
             <h4>10. Children's Privacy</h4>

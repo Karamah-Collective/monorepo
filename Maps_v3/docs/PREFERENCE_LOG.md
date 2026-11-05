@@ -5523,3 +5523,44 @@ and this log.
 - Treat phone Profile as a dedicated mobile auth surface: one continuous sheet, rounded-rectangle provider controls, filled inputs, and stronger spacing hierarchy rather than a nested auth card or desktop pill/button treatment.
 - Use pure black for dark-theme canvas/surfaces and pure white for light-theme canvas/surfaces across phone pages; keep secondary control surfaces tinted for contrast.
 - Use the app’s existing segmented-control pattern for the password sign-in/sign-up switch, with a moving active surface and smooth panel-height transition instead of a tiny text link.
+
+### 2026-11-05 — Standalone place photos
+
+- The place Photos section keeps an `Add photos` action even when no photos
+  exist. Uploading is signed-in only and expands an inline photo composer in
+  the Photos section; it is not a branch of the review composer.
+- The inline photo composer uses the existing review composer’s structure and
+  spacing so the place sheet grows and shrinks with the form instead of
+  opening another window.
+- The standalone composer opens and closes instantly; do not add a smooth
+  height animation to the image-adding area.
+- Standalone uploads use the separate `place_photos` D1 table and
+  `/api/place-photo` endpoint. `/api/place-media` merges those descriptors with
+  existing review photos only for the Photos gallery; the review API and review
+  image endpoint remain unchanged.
+- User correction: do not model photo-only uploads as nullable review rows or
+  surface them in Admin's Reviews page. They are a separate contribution type.
+- No Playwright tests were run; only static JavaScript syntax and diff checks
+  were performed, following the standing manual-testing preference.
+- Files modified: `src/place-media.js`, `src/place-photos.js`, `src/places.js`,
+  `functions/_place-photos.js`, `functions/api/place-photo.js`,
+  `functions/api/place-media.js`, `functions/api/places.js`, `schema.sql`,
+  `migrations/0056_place_photos.sql`, `index.html`, `styles.css`, `sw.js`,
+  `tests/17-place-media-layout.spec.js`, and media docs.
+
+### 2026-11-05 — Phone home visual consistency
+
+- Place carousel footers share the Discover Places footer’s `surface-2` color
+  and compact title typography.
+- The phone home banner and Discover map card participate in the first-load
+  reveal instead of being visible before the rest of the home content.
+- All phone home section headings, including Explore Helsinki, use the same
+  initial reveal state.
+- On home scroll, the banner moves upward more slowly than the prayer card;
+  the parallax target is approximately 50% prayer-card overlap while keeping
+  the existing pull-down response.
+- The active phone navbar pill keeps one consistent horizontal silhouette across
+  destinations, without transform scaling that distorts its curvature.
+- Phone destination scroll bodies reserve the same bottom clearance as Home,
+  keeping the persistent navbar from covering the final Events, Places, or
+  Profile content.

@@ -1411,6 +1411,11 @@ async function deletePlace(db, placeId, env) {
     db.prepare("DELETE FROM place_social_videos WHERE place_id = ?").bind(placeId),
   ];
   try {
+    const { results } = await db.prepare("SELECT object_key FROM place_photos WHERE place_id = ?").bind(placeId).all();
+    mediaKeys.push(...results.map((row) => row.object_key).filter(Boolean));
+    statements.unshift(db.prepare("DELETE FROM place_photos WHERE place_id = ?").bind(placeId));
+  } catch { /* The additive standalone-photo migration may not be applied yet. */ }
+  try {
     await db.prepare("SELECT id FROM place_promos LIMIT 1").first();
     statements.push(db.prepare("DELETE FROM place_promos WHERE place_id = ?").bind(placeId));
   } catch {

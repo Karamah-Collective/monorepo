@@ -553,16 +553,40 @@ function _updateRailControls(rail, previous, next, controls) {
  * Mount a lazy mixed-source place gallery.
  * @param {HTMLElement} host - Container inside the active place sheet.
  * @param {object} place - Place record containing id, name, and optional Maps URL.
- * @param {{onLayoutChange?: function(): void}} [options={}] - Sheet remeasurement hook.
+ * @param {{onLayoutChange?: function(): void, onAddPhotos?: function(HTMLElement, function(): void, function(): void): void}} [options={}] - Sheet remeasurement and upload hooks.
  * @returns {{refresh: function(): Promise<void>}} Gallery update handle.
  */
-export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {}) {
+export function mountPlaceMedia(host, place, { onLayoutChange = () => {}, onAddPhotos = () => {} } = {}) {
   const section = document.createElement("section");
   section.className = "pp-media";
   section.setAttribute("aria-label", `Photos of ${place.name}`);
   const header = document.createElement("div");
-  header.className = "pp-media-header";
-  header.innerHTML = `<span>Photos <span class="pp-media-count" aria-live="polite"></span></span>`;
+  header.className = "pp-section-hdr pp-media-header";
+  header.innerHTML = `<span>Photos <span class="pp-media-count count-badge" aria-live="polite"></span></span>`;
+  const addPhotos = document.createElement("button");
+  addPhotos.type = "button";
+  addPhotos.className = "pp-timeline-btn pp-timeline-pill pp-section-action";
+  addPhotos.textContent = "Add photos";
+  addPhotos.setAttribute("aria-label", `Add photos of ${place.name}`);
+  const uploadHost = document.createElement("div");
+  uploadHost.className = "pp-media-upload is-closed";
+  const uploadBody = document.createElement("div");
+  uploadBody.className = "pp-media-upload-inner";
+  uploadHost.appendChild(uploadBody);
+  addPhotos.addEventListener("click", () => {
+    addPhotos.classList.add("hide");
+    const closeUpload = () => {
+      uploadHost.classList.add("is-closed");
+      addPhotos.classList.remove("hide");
+      onLayoutChange();
+    };
+    const openUpload = () => {
+      addPhotos.classList.add("hide");
+      onLayoutChange();
+    };
+    onAddPhotos(uploadHost, closeUpload, openUpload);
+  });
+  header.appendChild(addPhotos);
   const controls = document.createElement("div");
   controls.className = "pp-media-controls";
   controls.hidden = true;
@@ -576,7 +600,7 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
   header.appendChild(controls);
   const rail = document.createElement("div");
   rail.className = "pp-media-rail";
-  section.append(header, rail);
+  section.append(header, uploadHost, rail);
 
   const previous = controls.querySelector(".pp-media-nav--previous");
   const next = controls.querySelector(".pp-media-nav--next");
@@ -599,12 +623,6 @@ export function mountPlaceMedia(host, place, { onLayoutChange = () => {} } = {})
 
   const render = () => {
     const photos = [...community, ...google];
-    if (!photos.length) {
-      const wasConnected = section.isConnected;
-      section.remove();
-      if (wasConnected) onLayoutChange();
-      return;
-    }
     if (!section.isConnected) {
       section.classList.add("pp-media--entering");
       host.appendChild(section);
